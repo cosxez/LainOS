@@ -182,7 +182,21 @@ void printc(char c,unsigned char color)
 	curpos(curpos_x,curpos_y);
 }
 
-void println(const char* string,unsigned char color)
+void print(char* string, unsigned char color)
+{
+	volatile char* video_mem=(volatile char*)0xB8000;
+
+	for (int i=0;string[i]!='\0';i++)
+	{
+		unsigned short index=curpos_y*80+curpos_x;
+		video_mem[(index+i)*2]=string[i];
+		video_mem[(index+i)*2+1]=color;
+		curpos_x+=1;
+	}
+	curpos(curpos_x,curpos_y);
+}
+
+void println(char* string,unsigned char color)
 {
 	volatile char* video_mem=(volatile char*)0xB8000;
 
@@ -225,9 +239,14 @@ void adduser()
 {
 }
 
+void echo(char* buff)
+{
+	println(buff,curcolor);
+}
+
 extern void help();
 
-struct comd commands[]={{"help",help},{"clear",clear},{"shutdown",shutdown},{"reboot",reboot},{"adduser",adduser}};
+struct comd commands[]={{"help",help},{"clear",clear},{"shutdown",shutdown},{"reboot",reboot},{"adduser",adduser},{"echo",echo}};
 
 void help()
 {
@@ -235,6 +254,7 @@ void help()
 	curpos(curpos_x,curpos_y+=1);
 	for (unsigned int i=0;i<sizeof(commands)/sizeof(struct comd);i++)
 	{
+		print("- ",curcolor);
 		println(commands[i].func_name,curcolor);
 	}
 }
@@ -245,20 +265,38 @@ void cmd_handler()
 	unsigned char is_uc=0x01;
 	for (int i=0;cmd_buffer[i]!='\0';i++){buff_size+=1;}
 
+	if (cmd_buffer[0]=='\0'){cmd_buffer[0]='\0';cp_buff_cur=0;printc('>',curcolor);return;}
+	unsigned char com_size=0;
+
 	for (unsigned int i=0;i<sizeof(commands) / sizeof(struct comd);i++)
 	{
 		unsigned char is_func=0x01;
-		for (int j=0;cmd_buffer[j]!='\0' || commands[i].func_name[j]!='\0';j++)
+		for (int j=0;commands[i].func_name[j]!='\0';j++){com_size+=1;}
+		for (int j=0;commands[i].func_name[j]!='\0' || cmd_buffer[j]!='\0';j++)
 		{
 			if (cmd_buffer[j]!=commands[i].func_name[j]){is_func=0x00;break;}
 		}
-		unsigned char com_size=0;
-		for (int j=0;commands[i].func_name[j]!='\0';j++){com_size+=1;}
-
-		if (is_func==0x01 && buff_size>=com_size){commands[i].func();is_uc=0x00;break;}
+		if (is_func==0x01 && buff_size==com_size){commands[i].func();is_uc=0x00;break;}
+		com_size=0;
+	}
+	if (cmd_buffer[0]=='e' && cmd_buffer[1]=='c' && cmd_buffer[2]=='h' && cmd_buffer[3]=='o')
+	{
+		char buff_to_func[128];
+		unsigned int btfv=0;
+		int j=0;
+		unsigned char ps=0;
+		for (int i=4;cmd_buffer[i]==' ';i++){ps+=1;}
+		for (j=4+ps;j<buff_size;j++)
+		{
+			buff_to_func[btfv]=cmd_buffer[j];
+			btfv+=1;
+		}
+		buff_to_func[j]='\0';
+		echo(buff_to_func);
+		is_uc=0x00;
 	}
 	if (is_uc==0x01){println("Unknow command",curcolor);}
-	for (int i=0;i<128;i++){cmd_buffer[i]=' ';}
+	cmd_buffer[0]='\0';
 	cp_buff_cur=0;
 	printc('>',curcolor);
 }

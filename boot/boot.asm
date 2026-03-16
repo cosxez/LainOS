@@ -53,4 +53,4 @@ _start:
 	call kernel_main
 
 .hang:	hlt
-	jmp .hang	
+	jmp .hang
