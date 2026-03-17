@@ -305,7 +305,7 @@ void keyboard_read()
 {
 	unsigned char scancode=inb(0x60);
 	
-	if (!(scancode &0x80))
+	if (!(scancode & 0x80))
 	{
 		char c=keys[scancode];
 		
