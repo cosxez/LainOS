@@ -284,8 +284,8 @@ void cmd_handler()
 		char buff_to_func[128];
 		unsigned int btfv=0;
 		int j=0;
-		unsigned char ps=0;
-		for (int i=4;cmd_buffer[i]==' ';i++){ps+=1;}
+		unsigned short ps=0;
+		for(int i=4;cmd_buffer[i]==' ';i++){ps+=1;}
 		for (j=4+ps;j<buff_size;j++)
 		{
 			buff_to_func[btfv]=cmd_buffer[j];
@@ -293,6 +293,8 @@ void cmd_handler()
 		}
 		buff_to_func[j]='\0';
 		echo(buff_to_func);
+		j=0;
+		for (int i=0;i<128;i++){buff_to_func[i]='\0';}
 		is_uc=0x00;
 	}
 	if (is_uc==0x01){println("Unknow command",curcolor);}
@@ -305,7 +307,7 @@ void keyboard_read()
 {
 	unsigned char scancode=inb(0x60);
 	
-	if (!(scancode & 0x80))
+	if (!(scancode &0x80))
 	{
 		char c=keys[scancode];
 		
