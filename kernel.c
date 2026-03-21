@@ -18,7 +18,7 @@ struct mltboot_info
 	unsigned int flags;
 	unsigned char unuse_args1[84];
 
-	unsigned long long frbuff_addr;
+	unsigned int frbuff_addr;
 	unsigned int frbuff_pitch;
 	unsigned int frbuff_width;
 	unsigned int frbuff_height;
@@ -66,7 +66,7 @@ struct lgdt_struct gdtp;
 
 struct mltboot_info* mlt_info;
 
-void* ifr_addr;
+unsigned short* ifr_addr;
 unsigned int scrw;
 unsigned int scrh;
 
@@ -393,16 +393,23 @@ void kernel_main(struct mltboot_info* mltinf)
 	mlt_info=mltinf;
 	if (mlt_info->flags & (1<<12))
 	{
-		ifr_addr=(void*)(unsigned int)mlt_info->frbuff_addr;
+		ifr_addr=(unsigned short*)(unsigned int)mlt_info->frbuff_addr;
 		scrw=mlt_info->frbuff_width;
 		scrh=mlt_info->frbuff_height;
 	
-	for (unsigned int i=0;i<600;i++)
+	for (unsigned int i=0;i<600*800;i++)
 	{
-		for (int j=0;j<800;j++){set_pixel(j,i,0x00A7D3);if ((i*j)%2==0){set_pixel(j,i,0x000000);}}
+		ifr_addr[i]=0xB3D0;
 	}
 	}
-
+	
+	for (int i=300;i<400;i++)
+	{
+		for (int j=300;j<500;j++)
+		{
+			ifr_addr[i*800+j]=0xFFFF;
+		}
+	}
 	while (1)
 	{
 		asm volatile("hlt");
