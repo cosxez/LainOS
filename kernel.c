@@ -1,7 +1,5 @@
-#define WHITE 0x0F
-
 unsigned short curpos_x=0,curpos_y=0;
-unsigned char curcolor=WHITE;
+unsigned char curcolor=0x0F;
 
 static inline void outb(unsigned short port, unsigned short value)
 {
@@ -14,6 +12,19 @@ static inline unsigned char inb(unsigned short port)
 	asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
 	return ret;
 }
+
+struct mltboot_info
+{
+	unsigned int flags;
+	unsigned char unuse_args1[84];
+
+	unsigned long long frbuff_addr;
+	unsigned int frbuff_pitch;
+	unsigned int frbuff_width;
+	unsigned int frbuff_height;
+	unsigned char frbuff_bpp;
+	unsigned char frbuff_type;
+}__attribute__((packed));
 
 struct idt_struct
 {
@@ -53,6 +64,12 @@ struct lidt_struct idtp;
 struct gdt_struct gdts[3];
 struct lgdt_struct gdtp;
 
+struct mltboot_info* mlt_info;
+
+void* ifr_addr;
+unsigned int scrw;
+unsigned int scrh;
+
 const char keys[]={0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0, 0, 'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\n', 0, 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', '`', 0, '\\', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, '*', 0, ' '};
 
 char cmd_buffer[128];
@@ -63,6 +80,31 @@ struct comd
 	char* func_name;
 	void (*func)();
 };
+
+void set_pixel(int x,int y, unsigned int color)
+{
+	if (x>0 && y>0 && x<=(int)scrw && y<=(int)scrh)
+	{
+		unsigned char red=(color >> 16) & 0xFF;
+		unsigned char green=(color>>8) & 0xFF;
+		unsigned char blue=color & 0xFF;
+
+		unsigned int offset=y*mlt_info->frbuff_pitch + x * (mlt_info->frbuff_bpp/8);
+		unsigned char* daddr=(unsigned char*)ifr_addr+offset;
+		
+		if (mlt_info->frbuff_bpp==32){*(unsigned int*)daddr=color;}
+		if (mlt_info->frbuff_bpp==16)
+		{
+			color=(((red>>3)<<11) | ((green>>2)<<5) | (blue>>3));
+			*(unsigned short*)daddr=color;
+		}
+		if (mlt_info->frbuff_bpp==8)
+		{
+			color=((red & 0xE0) | ((green & 0xE0)>>3) | (blue>>6));
+			*daddr=color;
+		}
+	}
+}
 
 void pic_map()
 {
@@ -142,7 +184,7 @@ void curpos(unsigned short x, unsigned short y)
 		for (int i=0;i<80*2;i+=2)
 		{
 			video_mem[24*80*2+i]=' ';
-			video_mem[24*80*2+i+1]=WHITE;
+			video_mem[24*80*2+i+1]=0xFF;
 		}
 		curpos_x=0;curpos_y=24;
 	}
@@ -165,7 +207,7 @@ void clear()
 		{
 			unsigned short index=i*80+j;
 			video_mem[index*2]=' ';
-			video_mem[index*2+1]=WHITE;
+			video_mem[index*2+1]=0x00;
 		}
 	}
 	curpos_x=0;curpos_y=0;
@@ -191,7 +233,6 @@ void print(char* string, unsigned char color)
 		unsigned short index=curpos_y*80+curpos_x;
 		video_mem[(index+i)*2]=string[i];
 		video_mem[(index+i)*2+1]=color;
-		curpos_x+=1;
 	}
 	curpos(curpos_x,curpos_y);
 }
@@ -213,25 +254,25 @@ void println(char* string,unsigned char color)
 void reboot()
 {
 	clear();
-	println("System rebooting",WHITE);
+	println("System rebooting",0x0F);
 
 	while (inb(0x64) & 0x02);
 
 	outb(0x64,0xFE);
-	println("Cannot be reboot",WHITE);
+	println("Cannot be reboot",0x0F);
 }
 
 void shutdown()
 {
 	clear();
-	println("System shutdown",WHITE);
+	println("System shutdown",0x0F);
 	outb(0x604, 0x2000);
 	outb(0x4004, 0x3400);
 	outb(0xB004, 0x2000);
 	outb(0xB2, 0xBE);
 
-	println("Cannot be shutdown",WHITE);
-	println("Try reboot",WHITE);
+	println("Cannot be shutdown",0x0F);
+	println("Try reboot",0x0F);
 	reboot();
 }
 
@@ -347,11 +388,20 @@ void keyboard_read()
 	outb(0x20,0x20);
 }
 
-void kernel_main()
+void kernel_main(struct mltboot_info* mltinf)
 {
-	clear();
-	println("LainOS",curcolor);
-	printc('>',curcolor);
+	mlt_info=mltinf;
+	if (mlt_info->flags & (1<<12))
+	{
+		ifr_addr=(void*)(unsigned int)mlt_info->frbuff_addr;
+		scrw=mlt_info->frbuff_width;
+		scrh=mlt_info->frbuff_height;
+	
+	for (unsigned int i=0;i<600;i++)
+	{
+		for (int j=0;j<800;j++){set_pixel(j,i,0x00A7D3);if ((i*j)%2==0){set_pixel(j,i,0x000000);}}
+	}
+	}
 
 	while (1)
 	{
