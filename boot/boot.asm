@@ -7,9 +7,9 @@ MBOOT_CHECKSUM equ -(MBOOT_HEADER_MAGIC + MBOOT_HEADER_FLAGS)
 
 section .multiboot
 align 4
-	dd MBOOT_HEADER_MAGIC
-	dd MBOOT_HEADER_FLAGS
-	dd MBOOT_CHECKSUM
+	dd 0x1BADB002
+	dd 0x00000007
+	dd -(0x1BADB002 + 0x00000007)
 	
 	dd 0
 	dd 0
@@ -18,9 +18,9 @@ align 4
 	dd 0
 
 	dd 0
-	dd 800
-	dd 600
-	dd 16
+	dd 1024
+	dd 768
+	dd 32
 
 section .bss
 align 16

@@ -14,11 +14,33 @@ static inline unsigned char inb(unsigned short port)
 }
 
 struct mltboot_info
-{
+{	
 	unsigned int flags;
-	unsigned char unuse_args1[84];
+	unsigned int mem_lower;
+	unsigned int mem_upper;
+	unsigned int boot_device;
+	
+	unsigned int cmdline;
+	unsigned int mods_count;
+	unsigned int mods_addr;
+	unsigned int syms[4];
+	unsigned int mmap_length;
+	unsigned int mmap_addr;
+	unsigned int drives_length;
+	unsigned int drives_addr;
+	unsigned int config_table;
+	unsigned int boot_loader_name;
+	unsigned int apm_table;
+	
+	unsigned int vbe_control_info;
+	unsigned int vbe_mode_info;
+	unsigned short vbe_mode;
+	unsigned short vbe_interface_seg;
+	unsigned short vbe_interface_off;
+	unsigned short vbe_interface_len;
 
 	unsigned int frbuff_addr;
+	unsigned int unuse_addr;
 	unsigned int frbuff_pitch;
 	unsigned int frbuff_width;
 	unsigned int frbuff_height;
@@ -66,7 +88,7 @@ struct lgdt_struct gdtp;
 
 struct mltboot_info* mlt_info;
 
-unsigned short* ifr_addr;
+void* ifr_addr;
 unsigned int scrw;
 unsigned int scrh;
 
@@ -83,7 +105,7 @@ struct comd
 
 void set_pixel(int x,int y, unsigned int color)
 {
-	if (x>0 && y>0 && x<=(int)scrw && y<=(int)scrh)
+	if (x>=0 && y>=0 && x<=(int)scrw && y<=(int)scrh)
 	{
 		unsigned char red=(color >> 16) & 0xFF;
 		unsigned char green=(color>>8) & 0xFF;
@@ -344,10 +366,14 @@ void cmd_handler()
 	printc('>',curcolor);
 }
 
+int yhu=0;
 void keyboard_read()
 {
 	unsigned char scancode=inb(0x60);
 	
+	set_pixel(yhu,100,0xFFFFFF);
+	if (yhu>=1024){yhu=0;}
+	yhu+=1;
 	if (!(scancode &0x80))
 	{
 		char c=keys[scancode];
@@ -393,23 +419,26 @@ void kernel_main(struct mltboot_info* mltinf)
 	mlt_info=mltinf;
 	if (mlt_info->flags & (1<<12))
 	{
-		ifr_addr=(unsigned short*)(unsigned int)mlt_info->frbuff_addr;
+		ifr_addr=(void*)(unsigned int)mlt_info->frbuff_addr;
 		scrw=mlt_info->frbuff_width;
 		scrh=mlt_info->frbuff_height;
 	
-	for (unsigned int i=0;i<600*800;i++)
+	for (int y=0;y<50;y++)
 	{
-		ifr_addr[i]=0xB3D0;
-	}
-	}
-	
-	for (int i=300;i<400;i++)
-	{
-		for (int j=300;j<500;j++)
+		for (int x=0;x<50;x++)
 		{
-			ifr_addr[i*800+j]=0xFFFF;
+			set_pixel(x,y,0x00B3DD);
 		}
 	}
+	for (int y=50;y<100;y++)
+	{
+		for (int x=50;x<100;x++)
+		{
+			set_pixel(x,y,0xAB3D00);
+		}
+	}
+	}
+	else{print("Error video mode",0x0E);}
 	while (1)
 	{
 		asm volatile("hlt");
