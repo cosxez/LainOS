@@ -18,8 +18,8 @@ align 4
 	dd 0
 
 	dd 0
-	dd 1024
-	dd 768
+	dd 800
+	dd 600
 	dd 32
 
 section .bss
@@ -59,9 +59,9 @@ _start:
 
 	extern idt_table
 	call idt_table
-
-	push ebx
+	
 	sti
+	push ebx
 	call kernel_main
 
 .hang:	

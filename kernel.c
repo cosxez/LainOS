@@ -39,8 +39,10 @@ struct mltboot_info
 	unsigned short vbe_interface_off;
 	unsigned short vbe_interface_len;
 
+//	unsigned char unsue_args[84];
 	unsigned int frbuff_addr;
 	unsigned int unuse_addr;
+//	unsigned int unuse_addr;
 	unsigned int frbuff_pitch;
 	unsigned int frbuff_width;
 	unsigned int frbuff_height;
@@ -88,7 +90,7 @@ struct lgdt_struct gdtp;
 
 struct mltboot_info* mlt_info;
 
-void* ifr_addr;
+unsigned int* ifr_addr;
 unsigned int scrw;
 unsigned int scrh;
 
@@ -371,8 +373,8 @@ void keyboard_read()
 {
 	unsigned char scancode=inb(0x60);
 	
-	set_pixel(yhu,100,0xFFFFFF);
-	if (yhu>=1024){yhu=0;}
+	ifr_addr[100*800+yhu]=0xFFFFFF;
+	if (yhu>=800){yhu=0;}
 	yhu+=1;
 	if (!(scancode &0x80))
 	{
@@ -419,24 +421,17 @@ void kernel_main(struct mltboot_info* mltinf)
 	mlt_info=mltinf;
 	if (mlt_info->flags & (1<<12))
 	{
-		ifr_addr=(void*)(unsigned int)mlt_info->frbuff_addr;
+		ifr_addr=(unsigned int*)mlt_info->frbuff_addr;
 		scrw=mlt_info->frbuff_width;
 		scrh=mlt_info->frbuff_height;
-	
-	for (int y=0;y<50;y++)
-	{
-		for (int x=0;x<50;x++)
+			
+		for (int i=0;i<600;i++)
 		{
-			set_pixel(x,y,0x00B3DD);
+			for (int j=0;j<350;j++)
+			{
+				ifr_addr[i*800+j]=0x0F3A;
+			}
 		}
-	}
-	for (int y=50;y<100;y++)
-	{
-		for (int x=50;x<100;x++)
-		{
-			set_pixel(x,y,0xAB3D00);
-		}
-	}
 	}
 	else{print("Error video mode",0x0E);}
 	while (1)
