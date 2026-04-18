@@ -131,7 +131,7 @@ void kernel_main(unsigned long saddr)
 	}
 	curpos(0,curpos_y+30*font_size);
 	print("LainOS v0.1\n",0x00ffffff);
-	print('>',0x00ffffff);
+	printc('>',0x00ffffff);
 
 	while (1){__asm__("hlt");}
 }
