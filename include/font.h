@@ -4,6 +4,13 @@ struct fcamn
 	char ch;
 }__attribute__((packed));
 
+struct lsctf
+{
+	unsigned short lsc;
+	char ch;
+	char sch;
+}__attribute__((packed));
+
 const struct fcamn fmcl[] = 
 {
     {0xB300, ' '}, {0xB301, '!'}, {0xB302, '"'}, {0xB303, '#'},
@@ -30,4 +37,20 @@ const struct fcamn fmcl[] =
     {0xB354, 't'}, {0xB355, 'u'}, {0xB356, 'v'}, {0xB357, 'w'},
     {0xB358, 'x'}, {0xB359, 'y'}, {0xB35A, 'z'}, {0xB35B, '{'},
     {0xB35C, '|'}, {0xB35D, '}'}, {0xB35E, '~'}
+};
+
+const struct lsctf lscfl[] = {
+    {KEY_A, 'a', 'A'}, {KEY_B, 'b', 'B'}, {KEY_C, 'c', 'C'}, {KEY_D, 'd', 'D'},
+    {KEY_E, 'e', 'E'}, {KEY_F, 'f', 'F'}, {KEY_G, 'g', 'G'}, {KEY_H, 'h', 'H'},
+    {KEY_I, 'i', 'I'}, {KEY_J, 'j', 'J'}, {KEY_K, 'k', 'K'}, {KEY_L, 'l', 'L'},
+    {KEY_M, 'm', 'M'}, {KEY_N, 'n', 'N'}, {KEY_O, 'o', 'O'}, {KEY_P, 'p', 'P'},
+    {KEY_Q, 'q', 'Q'}, {KEY_R, 'r', 'R'}, {KEY_S, 's', 'S'}, {KEY_T, 't', 'T'},
+    {KEY_U, 'u', 'U'}, {KEY_V, 'v', 'V'}, {KEY_W, 'w', 'W'}, {KEY_X, 'x', 'X'},
+    {KEY_Y, 'y', 'Y'}, {KEY_Z, 'z', 'Z'},
+    {KEY_1, '1', '!'}, {KEY_2, '2', '@'}, {KEY_3, '3', '#'}, {KEY_4, '4', '$'},
+    {KEY_5, '5', '%'}, {KEY_6, '6', '^'}, {KEY_7, '7', '&'}, {KEY_8, '8', '*'},
+    {KEY_9, '9', '('}, {KEY_0, '0', ')'},
+    {KEY_SPACE, ' ', ' '},     {KEY_MINUS, '-', '_'}, {KEY_EQUAL, '=', '+'},
+    {KEY_DOT, '.', '>'},       {KEY_COMMA, ',', '<'}, {KEY_SLASH, '/', '?'},
+    {KEY_SEMICOLON, ';', ':'}, {KEY_APOSTROPHE, '\'', '"'}
 };

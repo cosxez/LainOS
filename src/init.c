@@ -3,13 +3,15 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <linux/fb.h>
+#include <linux/kd.h>
+#include <linux/input.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <font.h>
 
 struct fb_var_screeninfo frd;
-unsigned int *bfv;
+volatile unsigned int *bfv;
 
 unsigned int curpos_x=0;
 unsigned int curpos_y=0;
@@ -26,7 +28,7 @@ void curpos(unsigned int x,unsigned int y)
 	{
 		if (y<frd.yres)
 		{
-			curpos_y=y+30*font_size;curpos_x=0;
+			curpos_y=y+20*font_size;curpos_x=0;
 		}
 	}
 	else{curpos_x=x;curpos_y=y;}
@@ -37,17 +39,14 @@ void set_pixel(unsigned int x, unsigned int y,unsigned int color)
 	bfv[y*frd.xres+x]=color;
 }
 
-void cursor_draw(unsigned int color)
-{
-	for (unsigned int i=curpos_x;i<curpos_x+10;i++){bfv[curpos_y*frd.xres+i]=color;}
-}
-void cursor_del(unsigned int color)
+void cursor_fill(unsigned int color)
 {
 	for (unsigned int i=curpos_x;i<curpos_x+10;i++){bfv[curpos_y*frd.xres+i]=color;}
 }
 
 void printc(char c, unsigned int color)
 {
+	cursor_fill(0x00000000);
 	unsigned short mgfc = 0;
 	for (unsigned int i = 0; i < sizeof(fmcl) / sizeof(fmcl[0]); i++)
 	{
@@ -58,6 +57,7 @@ void printc(char c, unsigned int color)
 	}
 	if (mgfc == 0){return;}
 
+	if (curpos_x>(frd.xres-(20*font_size))){curpos(frd.xres+10,curpos_y);}
 	unsigned char *crp = _binary_font_cwqf_start;
 	while (crp < _binary_font_cwqf_end)
 	{
@@ -66,7 +66,7 @@ void printc(char c, unsigned int color)
 			crp += 2;
 			unsigned char lines = *crp;
 			crp++;
-
+			
 			for (unsigned char l = 0; l < lines; l++)
 			{
 				unsigned char b1 = crp[0];
@@ -86,7 +86,7 @@ void printc(char c, unsigned int color)
 
 				while (1)
 				{
-					set_pixel(x1, y1, color);
+					bfv[y1*frd.xres+x1]=color;
 					if (x1 == x2 && y1 == y2) {break;}
 					int e2 = 2 * err;
 					if (e2 > -dy){err -= dy; x1 += sx;}
@@ -114,18 +114,47 @@ int main()
 	mkdir("/sys", 0755);
 	mount("sysfs","/sys","sysfs",0,NULL);
 	
+	int dstty=open("/dev/tty0",O_RDWR);
+	int dssls=open("/dev/null",O_RDWR);
+	ioctl(dstty,KDSETMODE,KD_GRAPHICS);
+	dup2(dssls,0);dup2(dssls,1);dup2(dssls,2);
+	
 	struct fb_fix_screeninfo ofsml;
 
-	int frbuff=open("/dev/fb0",O_RDWR);
-	if (frbuff<0){printf("Error frbuff\n");}
+	int frbuff=open("/dev/fb0",O_RDWR | O_SYNC);
 	
 	ioctl(frbuff,FBIOGET_VSCREENINFO,&frd);
-	if (frd.xres==0){printf("error ioctl\n");while (1);}
 	ioctl(frbuff,FBIOGET_FSCREENINFO,&ofsml);
 	size_t map_size = (ofsml.smem_len + 4095) & ~4095;
 	bfv=(unsigned int*)mmap(0,map_size,PROT_READ | PROT_WRITE, MAP_SHARED,frbuff,0);
-	if (bfv==MAP_FAILED){printf("Error bfv, have not memory\n");return 1;}
 
+	for (unsigned int i=0;i<frd.xres*frd.yres;i++){bfv[i]=0x00000000;}
+
+	int fkb = -1;
+	char dnfkb[32];
+	for (int i = 0; i < 10; i++)
+	{
+		sprintf(dnfkb, "/dev/input/event%d", i);
+		int fd = open(dnfkb, O_RDONLY | O_NONBLOCK);
+		if (fd < 0){continue;}
+
+		unsigned long kbt[16];
+		for (int j=0;j<16;j++){kbt[j] = 0;}
+
+		if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(kbt)), kbt) >= 0)
+		{
+			if (kbt[30 / (sizeof(long) * 8)] & (1UL << (30 % (sizeof(long) * 8))))
+			{
+				fkb=fd;
+				ioctl(fkb, EVIOCGRAB, 1);
+				break;
+			}
+		}
+		close(fd);
+	}
+	if (fkb < 0){print("Error: keyboard dont init\n",0x00ff0000);}
+
+	struct input_event e;
 	for (unsigned int y=0;y<172;y++)
 	{
 		for (unsigned int x=0;x<172;x++)
@@ -141,6 +170,32 @@ int main()
 	curpos(0,curpos_y+30*font_size);
 	print("LainOS v0.1\n",0x00ffffff);
 	printc('>',0x00ffffff);
-
-	while(1){sleep(10);}
+	
+	unsigned char isprd_shift=0;
+	unsigned char isprd_spec=0;
+	unsigned char isprd_ctrl=0;
+	while(1)
+	{
+		while (read(fkb,&e,sizeof(e))>0)
+		{
+			if (e.type!=EV_KEY){break;}
+			if (e.code==KEY_LEFTSHIFT || e.code==KEY_RIGHTSHIFT){isprd_shift=e.value;}
+			if (e.code==KEY_LEFTMETA){isprd_spec=e.value;}
+			if (e.value==1 || e.value==2)
+			{
+				for (unsigned int i = 0; i < sizeof(lscfl) / sizeof(lscfl[0]); i++)
+				{
+					if (e.code==lscfl[i].lsc)
+					{
+						if (isprd_shift!=0){printc(lscfl[i].sch,0x00ffffff);}
+						else{printc(lscfl[i].ch,0x00ffffff);}
+						break;
+					}
+				}
+			}
+		}
+	//	cursor_fill(0x00ffffff);usleep(10000);
+	//	cursor_fill(0x00000000);usleep(10000);
+		usleep(20000);
+	}
 }
