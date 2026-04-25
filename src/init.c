@@ -116,7 +116,7 @@ void printc(char c, unsigned int color)
 					if (e2 < dx){err += dx; y1 += sy;}
 				}
 			}
-			curpos(curpos_x+10*font_size,curpos_y);
+			curpos(curpos_x+12*font_size,curpos_y);
 			return;
 		}
 		crp++;
@@ -206,6 +206,23 @@ int main()
 			if (e.code==KEY_LEFTMETA){isprd_spec=e.value;}
 			if (e.value==1 || e.value==2)
 			{
+				if (e.code==KEY_ENTER){cursor_fill(0x00000000);curpos(0,curpos_y+20*font_size);printc('>',0x00ffffff);};
+				if (e.code==KEY_BACKSPACE)
+				{
+					if (curpos_x>(13*font_size))
+					{
+						cursor_fill(0x00000000);
+						curpos(curpos_x-12*font_size,curpos_y);
+						for (int i=curpos_y;i<curpos_y+20*font_size;i++)
+						{
+							for (int j=curpos_x;j<curpos_x+13*font_size;j++)
+							{
+								bfv[i*frd.xres+j]=0x00000000;
+							}
+						}
+					}
+				}
+
 				for (unsigned int i = 0; i < sizeof(lscfl) / sizeof(lscfl[0]); i++)
 				{
 					if (e.code==lscfl[i].lsc)
@@ -218,6 +235,5 @@ int main()
 			}
 		}
 		cursor_fill(0x00ffffff);usleep(10000);
-	//	usleep(20000);
 	}
 }
