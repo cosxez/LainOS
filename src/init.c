@@ -39,9 +39,32 @@ void set_pixel(unsigned int x, unsigned int y,unsigned int color)
 	bfv[y*frd.xres+x]=color;
 }
 
+void draw_line(int x1, int y1, int x2, int y2, unsigned int color)
+{
+	int dx = (x2 > x1) ? (x2 - x1) : (x1 - x2);
+    	int dy = (y2 > y1) ? (y2 - y1) : (y1 - y2);
+    	int sx = (x1 < x2) ? 1 : -1;
+    	int sy = (y1 < y2) ? 1 : -1;
+    	int err = dx - dy;
+
+    	while (1)
+	{
+        	if (x1>=0 && x1<frd.xres && y1>=0 && y1<frd.yres)
+		{
+           		bfv[y1*frd.xres+x1]=color;
+        	}
+
+		if (x1==x2 && y1==y2){break;}
+		int e2=2 * err;
+		if (e2>-dy){err-=dy;x1+=sx;}
+		if (e2<dx){err+=dx;y1+=sy;}
+	}
+}
+
 void cursor_fill(unsigned int color)
 {
-	for (unsigned int i=curpos_x;i<curpos_x+10;i++){bfv[curpos_y*frd.xres+i]=color;}
+	draw_line(curpos_x-2*font_size,curpos_y+30*font_size,curpos_x,curpos_y+20*font_size,color);
+	draw_line(curpos_x,curpos_y+20*font_size,curpos_x+2*font_size,curpos_y+30*font_size,color);
 }
 
 void printc(char c, unsigned int color)
@@ -74,9 +97,9 @@ void printc(char c, unsigned int color)
 				crp += 2;
 
 				int x1 = curpos_x + ((b1 >> 4) * font_size);
-				int y1 = curpos_y + ((b1 & 0xf) * -font_size);
+				int y1 = curpos_y + ((b1 & 0xf) * font_size);
 				int x2 = curpos_x + ((b2 >> 4) * font_size);
-				int y2 = curpos_y + ((b2 & 0xf) * -font_size);
+				int y2 = curpos_y + ((b2 & 0xf) * font_size);
 
 				int dx = (x2 > x1) ? (x2 - x1) : (x1 - x2);
 				int dy = (y2 > y1) ? (y2 - y1) : (y1 - y2);
@@ -177,7 +200,7 @@ int main()
 	while(1)
 	{
 		while (read(fkb,&e,sizeof(e))>0)
-		{
+		{	
 			if (e.type!=EV_KEY){break;}
 			if (e.code==KEY_LEFTSHIFT || e.code==KEY_RIGHTSHIFT){isprd_shift=e.value;}
 			if (e.code==KEY_LEFTMETA){isprd_spec=e.value;}
@@ -194,8 +217,7 @@ int main()
 				}
 			}
 		}
-	//	cursor_fill(0x00ffffff);usleep(10000);
-	//	cursor_fill(0x00000000);usleep(10000);
-		usleep(20000);
+		cursor_fill(0x00ffffff);usleep(10000);
+	//	usleep(20000);
 	}
 }
