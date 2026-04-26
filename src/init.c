@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <fcntl.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <linux/fb.h>
@@ -16,6 +17,7 @@ volatile unsigned int *bfv;
 unsigned int curpos_x=0;
 unsigned int curpos_y=0;
 unsigned char font_size=1;
+unsigned int clst=0;
 
 extern unsigned char _binary_cvnt_whld_start[];
 
@@ -24,11 +26,12 @@ extern unsigned char _binary_font_cwqf_end[];
 
 void curpos(unsigned int x,unsigned int y)
 {
+	if (x==0 && curpos_y<y){clst=0;}
 	if (x>frd.xres)
 	{
 		if (y<frd.yres)
 		{
-			curpos_y=y+20*font_size;curpos_x=0;
+			curpos_y=y+20*font_size;curpos_x=0;clst=0;
 		}
 	}
 	else{curpos_x=x;curpos_y=y;}
@@ -70,6 +73,19 @@ void cursor_fill(unsigned int color)
 void printc(char c, unsigned int color)
 {
 	cursor_fill(0x00000000);
+	if (curpos_x<clst)
+	{
+		clst+=12*font_size;
+		for (int i=curpos_y;i<curpos_y+20*font_size;i++)
+		{
+			for (int j=clst;j>curpos_x;j--)
+			{
+				bfv[i*frd.xres+j]=bfv[i*frd.xres+(j-12*font_size)];
+			}
+		}
+		for (int i=curpos_y;i<curpos_y+20*font_size;i++){for (int j=curpos_x;j<curpos_x+13*font_size;j++){bfv[i*frd.xres+j]=0x00000000;}}
+	}
+
 	unsigned short mgfc = 0;
 	for (unsigned int i = 0; i < sizeof(fmcl) / sizeof(fmcl[0]); i++)
 	{
@@ -117,6 +133,7 @@ void printc(char c, unsigned int color)
 				}
 			}
 			curpos(curpos_x+12*font_size,curpos_y);
+			if (curpos_x>clst){clst+=12*font_size;}
 			return;
 		}
 		crp++;
@@ -209,7 +226,7 @@ int main()
 				if (e.code==KEY_ENTER){cursor_fill(0x00000000);curpos(0,curpos_y+20*font_size);printc('>',0x00ffffff);};
 				if (e.code==KEY_BACKSPACE)
 				{
-					if (curpos_x>(13*font_size))
+					if (curpos_x>(13*font_size) && curpos_x>=clst)
 					{
 						cursor_fill(0x00000000);
 						curpos(curpos_x-12*font_size,curpos_y);
@@ -220,8 +237,31 @@ int main()
 								bfv[i*frd.xres+j]=0x00000000;
 							}
 						}
+						clst-=12*font_size;
+					}
+					if (curpos_x>(13*font_size) && curpos_x<clst)
+					{
+						cursor_fill(0x00000000);
+						curpos(curpos_x-12*font_size,curpos_y);
+						for (int i=curpos_y;i<curpos_y+20*font_size;i++)
+						{
+							for (int j=curpos_x;j<curpos_x+13*font_size;j++)
+							{
+								bfv[i*frd.xres+j]=0x00000000;
+							}
+						}
+						for (int i=curpos_y;i<curpos_y+20*font_size;i++)
+						{
+							for (int j=curpos_x;j<clst;j++)
+							{
+								bfv[i*frd.xres+j]=bfv[i*frd.xres+(j+12*font_size)];
+							}
+						}
+						clst-=12*font_size;
 					}
 				}
+				if (e.code==KEY_LEFT){if (curpos_x>(13*font_size)){cursor_fill(0x00000000);curpos(curpos_x-12*font_size,curpos_y);}}
+				if (e.code==KEY_RIGHT){if (curpos_x<clst){cursor_fill(0x00000000);curpos(curpos_x+12*font_size,curpos_y);}}
 
 				for (unsigned int i = 0; i < sizeof(lscfl) / sizeof(lscfl[0]); i++)
 				{
