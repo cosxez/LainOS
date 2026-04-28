@@ -172,27 +172,44 @@ int main()
 
 	int fkb = -1;
 	char dnfkb[32];
-	for (int i = 0; i < 10; i++)
+	while (fkb<0)
+	{
+	for (int i = 0; i < 256; i++)
 	{
 		sprintf(dnfkb, "/dev/input/event%d", i);
 		int fd = open(dnfkb, O_RDONLY | O_NONBLOCK);
 		if (fd < 0){continue;}
 
-		unsigned long kbt[16];
-		for (int j=0;j<16;j++){kbt[j] = 0;}
+		unsigned long evbits[EV_MAX/(sizeof(long)*8)+1]={0};
+        	unsigned long keybits[KEY_MAX/(sizeof(long)*8)+1]={0};
 
-		if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(kbt)), kbt) >= 0)
+		if (ioctl(fd, EVIOCGBIT(0, sizeof(evbits)), evbits)>=0)
 		{
-			if (kbt[30 / (sizeof(long) * 8)] & (1UL << (30 % (sizeof(long) * 8))))
+			if (evbits[0] & (1UL << EV_KEY))
 			{
-				fkb=fd;
-				ioctl(fkb, EVIOCGRAB, 1);
-				break;
+				if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(keybits)), keybits) >= 0)
+				{
+					int idx = 16 / (sizeof(long) * 8);
+                        unsigned long mask = (1UL << (16 % (sizeof(long) * 8))) | (1UL << (17 % (sizeof(long) * 8))) | (1UL << (18 % (sizeof(long) * 8))) | (1UL << (19 % (sizeof(long) * 8)));
+				
+				if ((keybits[idx] & mask) == mask)
+				{
+					fkb=fd;
+					if(ioctl(fkb, EVIOCGRAB, 1) < 0)
+					{
+						close(fd);
+						fkb=-1;
+						continue;
+					}
+					break;
+				}
+				}
 			}
 		}
 		close(fd);
 	}
-	if (fkb < 0){print("Error: keyboard dont init\n",0x00ff0000);}
+	if (fkb<0){sleep(1);}
+	}
 
 	struct input_event e;
 	for (unsigned int y=0;y<172;y++)
